@@ -1,0 +1,20 @@
+# Dependências
+node_modules
+.next
+
+# Envs e secrets
+.env
+.env.*
+!.env.example
+
+# Git e ferramentas
+.git
+.gitignore
+
+# Dev
+*.md
+README*
+
+# OS
+.DS_Store
+Thumbs.db
