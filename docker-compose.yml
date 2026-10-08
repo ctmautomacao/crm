@@ -39,6 +39,21 @@ services:
     expose:
       - "3000"
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: crm_migrate
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-crmuser}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-crmdb}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - crm_net
+    profiles:
+      - migrate
+
 volumes:
   postgres_data:
 
