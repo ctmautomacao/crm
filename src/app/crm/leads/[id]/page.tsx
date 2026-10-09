@@ -7,9 +7,17 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, statusLeadVariant, statusLeadLabel } from "@/components/ui/Badge";
 import { TemperaturaInput } from "@/components/ui/TemperaturaInput";
 import { formatDate, formatDatetime } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Phone, Mail, MessageSquare, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Phone, Mail, MessageSquare, Edit2, Check, X, PhoneCall, MessageCircle, AtSign, MapPin, FileText } from "lucide-react";
 
-const STATUS_OPTIONS = ["NOVO", "CONTATO", "QUALIFICADO", "NAO_QUALIFICADO", "CONVERTIDO", "PERDIDO"];
+const STATUS_OPTIONS = ["NOVO", "CONTATO_REALIZADO", "EM_NEGOCIACAO", "CONVERTIDO", "PERDIDO", "DESCARTADO"];
+
+const FEED_TIPOS = [
+  { tipo: "LIGACAO", label: "Ligação", icon: PhoneCall, cor: "text-green-400" },
+  { tipo: "MENSAGEM", label: "Mensagem", icon: MessageCircle, cor: "text-blue-400" },
+  { tipo: "EMAIL_MANUAL", label: "E-mail", icon: AtSign, cor: "text-yellow-400" },
+  { tipo: "VISITA", label: "Visita", icon: MapPin, cor: "text-purple-400" },
+  { tipo: "ANOTACAO", label: "Nota", icon: FileText, cor: "text-gray-400" },
+];
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,10 +26,12 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tabelas, setTabelas] = useState<any>({});
   const [novaObservacao, setNovaObservacao] = useState("");
+  const [feedTipoAtivo, setFeedTipoAtivo] = useState("ANOTACAO");
   const [enviando, setEnviando] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [salvandoInline, setSalvandoInline] = useState(false);
 
   async function load() {
     const [leadRes, tabelasRes] = await Promise.all([
@@ -41,6 +51,8 @@ export default function LeadDetailPage() {
       campanhaId: leadData.lead?.campanhaId || "",
       indicadorId: leadData.lead?.indicadorId || "",
       vendedorId: leadData.lead?.vendedorId || "",
+      grupoProdutoId: leadData.lead?.grupoProdutoId || "",
+      categoriaId: leadData.lead?.categoriaId || "",
       temperatura: leadData.lead?.temperatura || 1,
       status: leadData.lead?.status || "NOVO",
       observacoes: leadData.lead?.observacoes || "",
@@ -50,13 +62,13 @@ export default function LeadDetailPage() {
 
   useEffect(() => { load(); }, [id]);
 
-  async function enviarFeed() {
+  async function enviarFeed(tipoOverride?: string) {
     if (!novaObservacao.trim()) return;
     setEnviando(true);
     await fetch(`/api/leads/${id}/feed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texto: novaObservacao, tipo: "OBSERVACAO" }),
+      body: JSON.stringify({ texto: novaObservacao, tipo: tipoOverride || feedTipoAtivo }),
     });
     setNovaObservacao("");
     setEnviando(false);
@@ -83,6 +95,17 @@ export default function LeadDetailPage() {
       body: JSON.stringify(form),
     });
     setEditando(false);
+    load();
+  }
+
+  async function salvarCampo(campo: string, valor: any) {
+    setSalvandoInline(true);
+    await fetch(`/api/leads/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [campo]: valor }),
+    });
+    setSalvandoInline(false);
     load();
   }
 
@@ -148,11 +171,20 @@ export default function LeadDetailPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">Status</span>
-                  <Badge variant={statusLeadVariant[lead.status]}>{statusLeadLabel[lead.status]}</Badge>
+                  <select
+                    value={lead.status}
+                    onChange={e => salvarCampo("status", e.target.value)}
+                    disabled={salvandoInline}
+                    className="text-xs px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50 cursor-pointer"
+                  >
+                    {STATUS_OPTIONS.map(s => (
+                      <option key={s} value={s}>{statusLeadLabel[s] || s}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">Temperatura</span>
-                  <TemperaturaInput value={lead.temperatura} readOnly size="sm" />
+                  <TemperaturaInput value={lead.temperatura} onChange={v => salvarCampo("temperatura", v)} size="sm" />
                 </div>
                 {lead.telefone && (
                   <div className="flex items-center gap-2">
@@ -171,6 +203,8 @@ export default function LeadDetailPage() {
                 {campanha && <Row label="Campanha" value={campanha.nome} />}
                 {indicador && <Row label="Indicador" value={indicador.nome} />}
                 {vendedor && <Row label="Vendedor" value={vendedor.nome} />}
+                {data.grupoProduto && <Row label="Grupo de Produto" value={data.grupoProduto.nome} />}
+                {data.categoria && <Row label="Categoria" value={data.categoria.nome} />}
                 <Row label="Criado em" value={formatDate(lead.criadoEm)} />
                 {lead.observacoes && (
                   <div>
@@ -234,6 +268,20 @@ export default function LeadDetailPage() {
                     {(tabelas.vendedores || []).filter((v: any) => v.ativo).map((v: any) => <option key={v.id} value={v.id}>{v.nome}</option>)}
                   </select>
                 </Field>
+                <Field label="Grupo de Produto">
+                  <select value={form.grupoProdutoId} onChange={e => setForm((p: any) => ({ ...p, grupoProdutoId: e.target.value }))}
+                    className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value="">-</option>
+                    {(tabelas.grupos || []).map((g: any) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                  </select>
+                </Field>
+                <Field label="Categoria">
+                  <select value={form.categoriaId} onChange={e => setForm((p: any) => ({ ...p, categoriaId: e.target.value }))}
+                    className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value="">-</option>
+                    {(tabelas.categorias || []).map((c: any) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </Field>
                 <Field label="Observações">
                   <textarea rows={3} value={form.observacoes} onChange={e => setForm((p: any) => ({ ...p, observacoes: e.target.value }))}
                     className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 resize-none" />
@@ -251,21 +299,41 @@ export default function LeadDetailPage() {
               <h3 className="text-sm font-medium text-gray-300">Histórico / Feed</h3>
             </div>
 
-            <div className="flex gap-3 mb-5">
-              <textarea
-                rows={2}
-                value={novaObservacao}
-                onChange={e => setNovaObservacao(e.target.value)}
-                placeholder="Adicionar observação, ação ou nota..."
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-none"
-              />
-              <button
-                onClick={enviarFeed}
-                disabled={enviando || !novaObservacao.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition self-end"
-              >
-                {enviando ? "..." : "Adicionar"}
-              </button>
+            <div className="mb-5 space-y-2">
+              <div className="flex gap-1.5 flex-wrap">
+                {FEED_TIPOS.map(({ tipo, label, icon: Icon, cor }) => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => setFeedTipoAtivo(tipo)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                      feedTipoAtivo === tipo
+                        ? "bg-gray-700 border-gray-500 text-white"
+                        : "bg-gray-800/50 border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600"
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${feedTipoAtivo === tipo ? cor : ""}`} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <textarea
+                  rows={2}
+                  value={novaObservacao}
+                  onChange={e => setNovaObservacao(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) enviarFeed(); }}
+                  placeholder={`Registrar ${FEED_TIPOS.find(f => f.tipo === feedTipoAtivo)?.label.toLowerCase() || "nota"}...`}
+                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+                />
+                <button
+                  onClick={() => enviarFeed()}
+                  disabled={enviando || !novaObservacao.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition self-end"
+                >
+                  {enviando ? "..." : "Salvar"}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -321,17 +389,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function feedIcon(tipo: string) {
   const icons: Record<string, string> = {
-    CRIACAO: "✦", OBSERVACAO: "💬", STATUS: "⟳", CONVERSAO: "→",
-    LIGACAO: "📞", EMAIL: "✉", VISITA: "📍", PROPOSTA: "📄", PEDIDO: "🛒",
+    CRIACAO: "✦", ANOTACAO: "💬", MUDANCA_STATUS: "⟳", CONVERSAO: "→",
+    LIGACAO: "📞", MENSAGEM: "💬", EMAIL_MANUAL: "✉", VISITA: "📍", PROPOSTA: "📄", PEDIDO: "🛒",
+    // legado
+    OBSERVACAO: "💬", STATUS: "⟳", EMAIL: "✉",
   };
   return icons[tipo] || "•";
 }
 
 function feedTipoLabel(tipo: string) {
   const labels: Record<string, string> = {
-    CRIACAO: "Criação", OBSERVACAO: "Observação", STATUS: "Status",
-    CONVERSAO: "Conversão", LIGACAO: "Ligação", EMAIL: "E-mail",
-    VISITA: "Visita", PROPOSTA: "Proposta", PEDIDO: "Pedido",
+    CRIACAO: "Criação", ANOTACAO: "Nota", MUDANCA_STATUS: "Status",
+    CONVERSAO: "Conversão", LIGACAO: "Ligação", MENSAGEM: "Mensagem",
+    EMAIL_MANUAL: "E-mail", VISITA: "Visita", PROPOSTA: "Proposta", PEDIDO: "Pedido",
+    // legado
+    OBSERVACAO: "Observação", STATUS: "Status", EMAIL: "E-mail",
   };
   return labels[tipo] || tipo;
 }

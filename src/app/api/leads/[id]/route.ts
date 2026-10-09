@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
-import { leads, feedLeads, clientes, clientesTelefones, clientesEmails, vendedores, origensLead, campanhas, indicadores } from "@/db/schema";
+import { leads, feedLeads, clientes, clientesTelefones, clientesEmails, vendedores, origensLead, campanhas, indicadores, gruposProduto, categorias } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       campanha: campanhas,
       indicador: indicadores,
       cliente: clientes,
+      grupoProduto: gruposProduto,
+      categoria: categorias,
     })
     .from(leads)
     .leftJoin(vendedores, eq(leads.vendedorId, vendedores.id))
@@ -24,6 +26,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .leftJoin(campanhas, eq(leads.campanhaId, campanhas.id))
     .leftJoin(indicadores, eq(leads.indicadorId, indicadores.id))
     .leftJoin(clientes, eq(leads.clienteId, clientes.id))
+    .leftJoin(gruposProduto, eq(leads.grupoProdutoId, gruposProduto.id))
+    .leftJoin(categorias, eq(leads.categoriaId, categorias.id))
     .where(and(eq(leads.id, params.id), eq(leads.tenantId, session.user.tenantId)));
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,7 +48,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     emails = await db.select().from(clientesEmails).where(eq(clientesEmails.clienteId, row.lead.clienteId));
   }
 
-  return NextResponse.json({ ...row, feed, telefones, emails });
+  const feedFlat = feed.map(({ feed: f, vendedor: v }) => ({
+    ...f,
+    criadoEm: f.dataHora,
+    autorNome: v?.nome || "Sistema",
+  }));
+
+  return NextResponse.json({ ...row, feed: feedFlat, telefones, emails });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

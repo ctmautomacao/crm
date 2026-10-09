@@ -23,3 +23,11 @@ export async function DELETE(req: NextRequest) {
   await db.delete(origensLead).where(and(eq(origensLead.id, id), eq(origensLead.tenantId, session.user.tenantId)));
   return NextResponse.json({ ok: true });
 }
+
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id, nome } = await req.json();
+  const [r] = await db.update(origensLead).set({ nome }).where(and(eq(origensLead.id, id), eq(origensLead.tenantId, session.user.tenantId))).returning();
+  return NextResponse.json(r);
+}

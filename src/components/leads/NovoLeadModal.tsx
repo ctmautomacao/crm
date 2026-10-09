@@ -20,6 +20,8 @@ export function NovoLeadModal({ onClose, onCreated }: Props) {
     campanhaId: "",
     indicadorId: "",
     vendedorId: "",
+    grupoProdutoId: "",
+    categoriaId: "",
     temperatura: 1,
     status: "NOVO",
     observacoes: "",
@@ -113,6 +115,24 @@ export function NovoLeadModal({ onClose, onCreated }: Props) {
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500">
                 <option value="">Minha conta</option>
                 {(tabelas.vendedores || []).filter((v: any) => v.ativo).map((v: any) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Grupo de Produto</label>
+              <select value={form.grupoProdutoId} onChange={(e) => set("grupoProdutoId", e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500">
+                <option value="">Selecione</option>
+                {(tabelas.grupos || []).map((g: any) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Categoria</label>
+              <select value={form.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500">
+                <option value="">Selecione</option>
+                {(tabelas.categorias || []).map((c: any) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
 

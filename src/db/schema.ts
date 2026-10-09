@@ -19,7 +19,7 @@ export const nivelAlertaEnum = pgEnum("nivel_alerta", ["ATENCAO", "CRITICO"]);
 export const statusLeadEnum = pgEnum("status_lead", [
   "NOVO", "CONTATO_REALIZADO", "EM_NEGOCIACAO", "CONVERTIDO", "PERDIDO", "DESCARTADO",
 ]);
-export const tipoFeedEnum = pgEnum("tipo_feed", ["ANOTACAO", "MUDANCA_STATUS", "CONVERSAO"]);
+export const tipoFeedEnum = pgEnum("tipo_feed", ["ANOTACAO", "MUDANCA_STATUS", "CONVERSAO", "LIGACAO", "MENSAGEM", "EMAIL_MANUAL", "VISITA"]);
 export const statusPropostaEnum = pgEnum("status_proposta", [
   "RASCUNHO", "ENVIADA", "APROVADA", "REPROVADA", "CANCELADA",
 ]);
@@ -246,6 +246,8 @@ export const leads = pgTable("leads", {
   origemId: text("origem_id").references(() => origensLead.id),
   campanhaId: text("campanha_id").references(() => campanhas.id),
   indicadorId: text("indicador_id").references(() => indicadores.id),
+  grupoProdutoId: text("grupo_produto_id").references(() => gruposProduto.id),
+  categoriaId: text("categoria_id").references(() => categorias.id),
   nomeContato: text("nome_contato").notNull(),
   empresa: text("empresa"),
   telefone: text("telefone"),
